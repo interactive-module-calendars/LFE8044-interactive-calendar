@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Student Practical Group Calendar</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: lightgray;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background-color: red;
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .header h1 { font-size: 2.2rem; font-weight: 300; margin-bottom: 6px; }
+    .header p { opacity: 0.95; }
+
+    .calendar-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .nav-btn {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .nav-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+    
+    .month-year { font-size: 1.25rem; font-weight: 600; color: #2c3e50; }
+
+    /* Calendar grid */
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: #dee2e6;
+      margin: 20px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .day-header {
+      background: #495057;
+      color: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* Fixed-size day cells (keeps each day same height) */
+    .day {
+      background: white;
+      height: 140px;         /* <-- fixed height for each day cell */
+      padding: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .day:hover {
+      background: #f8f9fa;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      z-index: 5;
+    }
+
+    .day-number { font-weight: 600; margin-bottom: 6px; color: #495057; }
+
+    .other-month { color: #adb5bd; background: #f8f9fa; }
+
+    .today {
+      background: #fff3cd !important;
+      border: 2px solid #ffc107;
+    }
+
+    .session {
+      display: block;
+      color: white;
+      padding: 4px 6px;
+      margin: 2px 0;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .session:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+
+    /* Format + Module-based classes - used by JS: e.g. "lecture bioXXXX" */
+    /* LFE8044 */
+    .lecture.lfe8044 { background-color: yellow; color: #111}
+    .event.lfe8044 { background-color: #74B72E; color: white}
+    .assessment.lfe8044 { background-color: red; color: #111;
+    }
+
+    /* modal */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .modal.show { display: block; }
+    .modal-content {
+      background-color: white;
+      margin: 8% auto;
+      padding: 22px;
+      border-radius: 12px;
+      width: 92%;
+      max-width: 640px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.25);
+      transform: translateY(-20px);
+      opacity: 0;
+      transition: all 0.24s ease;
+    }
+    .modal.show .modal-content { transform: translateY(0); opacity: 1; }
+    .close { float: right; font-size: 26px; font-weight: 700; cursor: pointer; color: #777; }
+    .modal h2 { color: #2c3e50; margin-bottom: 10px; }
+
+    .modal-info { display: grid; gap: 10px; }
+    .info-row { display:flex; gap:12px; align-items:center; padding:8px; background:#f8f9fa; border-radius:8px; }
+    .info-label { min-width: 110px; font-weight:600; color:#495057; }
+    .staff-badge { display:inline-block; background:#007bff; color:white; padding:4px 10px; border-radius:12px; font-weight:600; }
+    .module-badge { display:inline-block; padding:4px 10px; border-radius:12px; font-weight:600; color:white; }
+
+    .module-lfe8044 { background: #4facfe; }  /* blue */
+
+    /* Legend */
+    .legend { display:flex; justify-content:center; gap:18px; padding:18px; background:#f8f9fa; flex-wrap:wrap; border-top:1px solid #eee; }
+    .legend-item { display:flex; gap:8px; align-items:center; font-weight:600; color:#333; }
+    .legend-color { width:24px; height:16px; border-radius:4px; border:1px solid rgba(0,0,0,0.05); }
+
+    /* legend colors matching classes above */
+    .legend-color.lfe8044-lecture        { background:yellow;  }
+    .legend-color.lfe8044-event          { background: #74B72E;}
+    .legend-color.lfe8044-assessment     { background:red;     }
+
+    .no-sessions { text-align:center; padding:40px; color:#6c757d; font-style:italic; }
+
+    @media (max-width: 900px) {
+      .day { height: 110px; }
+      .group-selector select { width: 100%; max-width: 240px; }
+    }
+
+    @media (max-width: 560px) {
+      .header h1 { font-size: 1.4rem; }
+      .day { height: 100px; padding:6px; }
+      .session { font-size:10px; padding:3px 5px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>LFE8044 Course Calendar</h1>
+    </div>
+
+    <div class="calendar-nav">
+      <button class="nav-btn" onclick="previousMonth()">← Previous</button>
+      <div class="month-year" id="monthYear"></div>
+      <button class="nav-btn" onclick="nextMonth()">Next →</button>
+    </div>
+
+    <!-- LEGEND: only lectures & labs (class tests & feedback removed from legend) -->
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color lfe8044-lecture"></div>
+        <span>LFE8044 Lectures</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color lfe8044-assessment"></div>
+        <span>LFE8044 Assessments</span>
+    </div>
+      <div class="legend-item">
+        <div class="legend-color lfe8044-event"></div>
+        <span>LFE8044 Events</span>
+    </div>
+
+    <div class="calendar" id="calendar"></div>
+
+    <div class="no-sessions" id="noSessions" style="display: none;">
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="sessionModal" class="modal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <span class="close" aria-label="Close">&times;</span>
+      <h2>Session Details</h2>
+      <div class="modal-info">
+        <div class="info-row"><div class="info-label">Date & Time:</div><div class="info-value" id="modalDateTime"></div></div>
+        <div class="info-row"><div class="info-label">Session:</div><div class="info-value" id="modalLecture"></div></div>
+        <div class="info-row"><div class="info-label">Location:</div><div class="info-value" id="modalLocation"></div></div>
+        <div class="info-row"><div class="info-label">Staff:</div><div class="info-value"><span id="modalStaff" class="staff-badge"></span></div></div>
+        <div class="info-row"><div class="info-label">Module:</div><div class="info-value"><span id="modalModule" class="module-badge"></span></div></div>
+        <div class="info-row"><div class="info-label">Format:</div><div class="info-value" id="modalFormat"></div></div>
+        <div class="info-row"><div class="info-label">Week:</div><div class="info-value" id="modalWeek"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- your original sessionData preserved exactly (unchanged) ---
+    const sessionData = [
+      // Week 1
+      {week: 1, date: '2025-09-15', time: '14:00 - 17:00', location: 'DKB/01/028', day: 'M', lecture: 'Module Introduction', staff: 'NMG', format: 'Lecture', module: 'LFE8044'},
+      
+      // Week 2
+      {week: 2, date: '2025-09-22', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Environmental Impact Assessment', staff: 'NMG', format: 'Lecture', module: 'LFE8044'},
+      
+      // Week 3
+      {week: 3, date: '2025-09-29', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Multi-level Approaches to Climate Action', staff: 'AS', format: 'Lecture', module: 'LFE8044'},
+      
+      // Week 4
+      {week: 4, date: '2025-10-06', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Environmental Economics', staff: 'AL', format: 'Lecture', module: 'LFE8044'},
+      
+      // Week 5
+     {week: 5, date: '2025-10-13', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Sustainable Food Systems', staff: 'AC', format: 'Lecture', module: 'LFE8044'},
+      
+      // Week 6
+      {week: 6, date: '2025-10-20', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Carbon Footprinting', staff: 'JL', format: 'Lecture', module: 'LFE8044'},
+      {week: 6, date: '2025-10-24', time: '10:00 - 15:00', location: 'MBC/01/023', day: 'F', lecture: 'GIS Training', staff: 'NMG', format: 'Lecture', module: 'LFE8044'},
+      
+       //week 7 - READING WEEK
+
+            //Week 8
+      {week: 8, date: '2025-11-03', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Lifecycle Analysis', staff: 'JL', format: 'Lecture', module: 'LFE8044'},
+      {week: 8, date: '2025-11-04', time: '10:00 - 12:00', location: 'PFC/03/030', day: 'T', lecture: 'CLASS TEST', staff: 'NMG', format: 'Assessment', module: 'LFE8044'},
+      
+            //week 9
+            {week: 9, date: '2025-11-10', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Research Methods', staff: 'NMG', format: 'Lecture', module: 'LFE8044'},
+     
+            //week 10
+            {week: 10, date: '2025-11-17', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Qualitative Research Methods', staff: 'JS', format: 'Lecture', module: 'LFE8044'},
+            
+            //Week 11
+            
+            
+            //Week 12
+            {week: 12, date: '2025-12-01', time: '14:00 - 17:00', location: 'MBC/01/023', day: 'M', lecture: 'Data Handling and Analysis', staff: 'NMG', format: 'Lecture', module: 'LFE8044'},
+            
+            //Week 13
+            {week: 13, date: '2025-12-08', time: '14:00 - 17:00', location: 'ASH/04/006', day: 'M', lecture: 'Student Choice Seminars', staff: 'NMG', format: 'Event', module: 'LFE8044'},
+            {week: 13, date: '2025-12-12', time: '16:00', location: '', day: 'F', lecture: 'DATA ANALYSIS REPORT HAND IN', staff: '', format: 'Assessment', module: 'LFE8044'},
+            ];
+
+    // --- calendar state & helpers ---
+    let currentDate = new Date(2025, 8, 1); // September 2025 (as you had)
+   //-- let selectedGroup = ''; ---
+
+    const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+   //function updateCalendar() { 
+   //--  selectedGroup = document.getElementById('groupSelect').value; ---
+   // renderCalendar(); ---
+ //} 
+
+    function renderCalendar() {
+  const calendar = document.getElementById('calendar');
+  const monthYear = document.getElementById('monthYear');
+  const year = currentDate.getFullYear(), month = currentDate.getMonth();
+
+  monthYear.textContent = `${monthNames[month]} ${year}`;
+  
+  // Disable/enable navigation buttons - Sept to Dec only
+  document.querySelector('.nav-btn:first-child').disabled =
+    (year === 2025 && month === 8);  // September
+  document.querySelector('.nav-btn:last-child').disabled =
+    (year === 2025 && month === 11); // December
+    
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
+
+  calendar.innerHTML = '';
+
+  // Headers
+  dayNames.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'day-header';
+    h.textContent = d;
+    calendar.appendChild(h);
+  });
+
+  // Leading days from prev month
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const cell = document.createElement('div');
+    cell.className = 'day other-month';
+    const num = document.createElement('div');
+    num.className = 'day-number';
+    num.textContent = prevMonthDays - i;
+    cell.appendChild(num);
+    calendar.appendChild(cell);
+  }
+
+  // Current month
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'day';
+    const num = document.createElement('div');
+    num.className = 'day-number';
+    num.textContent = day;
+    cell.appendChild(num);
+
+    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    sessionData.filter(s => s.date === dateStr).forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'session';
+      if (s.format) el.classList.add(s.format.toLowerCase());
+      if (s.module) el.classList.add(s.module.toLowerCase());
+      el.innerHTML = `${s.time} ${s.lecture}`;
+      el.onclick = () => showSessionModal(s);
+      cell.appendChild(el);
+    });
+
+    calendar.appendChild(cell);
+  }
+
+  // Trailing days for next month
+  const totalCells = firstDay + daysInMonth;
+  const nextDays = 7 - (totalCells % 7 === 0 ? 7 : totalCells % 7);
+  for (let i = 1; i <= nextDays; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'day other-month';
+    const num = document.createElement('div');
+    num.className = 'day-number';
+    num.textContent = i;
+    cell.appendChild(num);
+    calendar.appendChild(cell);
+  }
+}
+
+    // Modal functions
+    function showSessionModal(s) {
+      const modal = document.getElementById('sessionModal');
+      const modalDateTime = document.getElementById('modalDateTime').textContent=`${new Date(s.date).toDateString()}, ${s.time}`;
+      const modalLecture = document.getElementById('modalLecture').innerHTML=s.lecture;
+      const modalLocation = document.getElementById('modalLocation').textContent=s.location||'';
+      const modalStaff = document.getElementById('modalStaff').textContent=s.staff||'';
+      const m = document.getElementById('modalModule');
+      m.textContent=s.module;
+      m.className='module-badge module-lfe8044';
+      const modalFormat = document.getElementById('modalFormat').textContent=s.format;
+      const modalWeek = document.getElementById('modalWeek').textContent=s.week||'';
+      modal.style.display='block';setTimeout(()=>modal.classList.add('show'),10);
+      }
+
+     function closeModal(){const m=document.getElementById('sessionModal');m.classList.remove('show');setTimeout(()=>m.style.display='none',220);}
+    document.querySelector('.close').onclick=closeModal;
+    window.onclick=e=>{if(e.target===document.getElementById('sessionModal'))closeModal();}
+
+    // previous / next navigation - limit to Sept & Dec
+    function previousMonth() {
+      if (currentDate.getFullYear() === 2025 && currentDate.getMonth() === 8) {
+    return; // already at September 2025 → do nothing
+  }
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderCalendar();
+    }
+
+    function nextMonth() {
+  if (currentDate.getFullYear() === 2025 && currentDate.getMonth() === 11) {
+    return; // already at December 2025 → do nothing
+  }
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderCalendar();
+}
+
+ window.previousMonth=previousMonth;window.nextMonth=nextMonth;
+    renderCalendar();
+  </script>
+</body>
+</html>
