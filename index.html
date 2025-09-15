@@ -333,6 +333,14 @@
     cell.appendChild(num);
 
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    // ✅ Check if this is "today"
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  if (dateStr === todayStr) {
+    cell.classList.add('today');
+  }
+    
     sessionData.filter(s => s.date === dateStr).forEach(s => {
       const el = document.createElement('div');
       el.className = 'session';
